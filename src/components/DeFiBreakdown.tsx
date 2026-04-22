@@ -7,43 +7,33 @@ import { efTreasury, type DefiPosition, type ProtocolStatus } from '../data'
 const fmt = (n: number) => `$${(n / 1e6).toFixed(1)}M`
 const fmtETH = (n: number) => `${n.toLocaleString()} ETH`
 
-const STATUS_STYLES: Record<ProtocolStatus, { bg: string; text: string; border: string }> = {
-  safe:    { bg: 'bg-green-900/30',  text: 'text-green-400',  border: 'border-green-800/60' },
-  warning: { bg: 'bg-yellow-900/30', text: 'text-yellow-400', border: 'border-yellow-800/60' },
-  minor:   { bg: 'bg-orange-900/30', text: 'text-orange-400', border: 'border-orange-800/60' },
+const STATUS: Record<ProtocolStatus, { bg: string; text: string; border: string; dot: string }> = {
+  safe:    { bg: 'bg-[#061510]', text: 'text-jade',  border: 'border-jade/25',  dot: 'bg-jade' },
+  warning: { bg: 'bg-[#1A1000]', text: 'text-amber', border: 'border-amber/25', dot: 'bg-amber' },
+  minor:   { bg: 'bg-[#1A0E00]', text: 'text-gold',  border: 'border-gold/25',  dot: 'bg-gold' },
 }
 
-interface StatusBadgeProps {
-  status: ProtocolStatus
-  label: string
-}
-
-function StatusBadge({ status, label }: StatusBadgeProps) {
-  const s = STATUS_STYLES[status]
+function StatusBadge({ status, label }: { status: ProtocolStatus; label: string }) {
+  const s = STATUS[status]
   return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${s.bg} ${s.text} ${s.border}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[9px] font-mono tracking-[0.12em] uppercase border ${s.bg} ${s.text} ${s.border}`}>
+      <span className={`w-1 h-1 rounded-full ${s.dot}`} />
       {label}
     </span>
   )
 }
 
-interface TooltipEntry {
-  payload: DefiPosition
-}
-
-interface CustomTooltipProps {
-  active?: boolean
-  payload?: TooltipEntry[]
-}
+interface TooltipEntry { payload: DefiPosition }
+interface CustomTooltipProps { active?: boolean; payload?: TooltipEntry[] }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
-    <div className="bg-slate-800 border border-slate-600 rounded-lg p-3 text-sm shadow-xl">
-      <p className="text-white font-semibold mb-1">{d.protocol}</p>
-      <p className="text-slate-300">{fmt(d.usd)}</p>
-      <p className="text-blue-400">{fmtETH(d.eth)}</p>
+    <div className="bg-ink border border-rim rounded-sm p-3 text-[11px] shadow-2xl">
+      <p className="font-display font-600 text-bright mb-1.5">{d.protocol}</p>
+      <p className="font-mono text-pale">{fmt(d.usd)}</p>
+      <p className="font-mono text-gold">{fmtETH(d.eth)}</p>
     </div>
   )
 }
@@ -52,68 +42,65 @@ export default function DeFiBreakdown() {
   const positions = efTreasury.defiPositions
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
         {positions.map(p => (
-          <div key={p.protocol} className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-white font-semibold">{p.protocol}</span>
+          <div key={p.protocol} className="bg-panel border border-edge rounded-sm p-5 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-px" style={{ backgroundColor: p.color }} />
+            <div className="flex justify-between items-start mb-4 pl-1">
+              <span className="font-display font-600 text-bright text-base">{p.protocol}</span>
               <StatusBadge status={p.status} label={p.statusLabel} />
             </div>
-            <div className="text-2xl font-bold text-white mb-0.5">{fmt(p.usd)}</div>
-            <div className="text-blue-400 text-sm mb-3">{fmtETH(p.eth)}</div>
-            <div className="w-full bg-slate-700 rounded-full h-1.5 mb-1">
-              <div className="h-1.5 rounded-full" style={{ width: `${p.pctOfDefi}%`, backgroundColor: p.color }} />
+            <div className="font-mono text-2xl font-medium text-bright mb-0.5 pl-1">{fmt(p.usd)}</div>
+            <div className="font-mono text-[11px] text-gold mb-4 pl-1">{fmtETH(p.eth)}</div>
+            <div className="w-full bg-edge rounded-full h-1 mb-1 ml-1">
+              <div className="h-1 rounded-full" style={{ width: `${p.pctOfDefi}%`, backgroundColor: p.color }} />
             </div>
-            <div className="text-slate-500 text-xs">{p.pctOfDefi}% of DeFi allocation</div>
+            <div className="font-mono text-[10px] text-dim pl-1">{p.pctOfDefi}% of DeFi allocation</div>
           </div>
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-          <h2 className="text-white font-semibold mb-4">ETH Deployed by Protocol</h2>
+      <div className="grid md:grid-cols-2 gap-5">
+        <div className="bg-panel border border-edge rounded-sm p-6">
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-5">USD Deployed by Protocol</div>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={[...positions]} barSize={48}>
-              <XAxis dataKey="protocol" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
+            <BarChart data={[...positions]} barSize={44}>
+              <XAxis dataKey="protocol" tick={{ fill: '#68688A', fontSize: 12, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
               <YAxis
-                tickFormatter={(v: number) => `${(v / 1e6).toFixed(0)}M`}
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tickFormatter={(v: number) => `$${(v / 1e6).toFixed(0)}M`}
+                tick={{ fill: '#44445E', fontSize: 11, fontFamily: 'IBM Plex Mono' }}
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Bar dataKey="usd" radius={[4, 4, 0, 0]}>
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(200,148,42,0.04)' }} />
+              <Bar dataKey="usd" radius={[2, 2, 0, 0]}>
                 {positions.map(p => <Cell key={p.protocol} fill={p.color} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-          <h2 className="text-white font-semibold mb-4">Protocol Risk Assessment</h2>
-          <div className="space-y-4">
+        <div className="bg-panel border border-edge rounded-sm p-6">
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-5">Risk Assessment</div>
+          <div className="space-y-5">
             {positions.map(p => (
               <div key={p.protocol} className="flex gap-3">
-                <div className="w-1 flex-shrink-0 rounded-full self-stretch" style={{ backgroundColor: p.color }} />
+                <div className="w-px flex-shrink-0 self-stretch rounded-full" style={{ backgroundColor: p.color }} />
                 <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-slate-200 text-sm font-medium">{p.protocol}</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-pale text-sm font-medium">{p.protocol}</span>
                     <StatusBadge status={p.status} label={p.statusLabel} />
                   </div>
-                  <p className="text-slate-400 text-xs leading-relaxed">{p.note}</p>
+                  <p className="font-mono text-[10px] text-dim leading-relaxed">{p.note}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 pt-4 border-t border-slate-700 text-xs text-slate-500">
-            <p className="mb-1">
-              <span className="text-slate-300 font-medium">Total DeFi deployed:</span> 20,000 ETH (~$50M)
-            </p>
-            <p>
-              <span className="text-slate-300 font-medium">% of total treasury:</span> 6.1% — EF deliberately sized this as a modest allocation
-            </p>
+          <div className="mt-5 pt-5 border-t border-edge font-mono text-[10px] text-dim space-y-1.5">
+            <div><span className="text-soft">Total DeFi deployed:</span> 20,000 ETH (~$50M)</div>
+            <div><span className="text-soft">% of treasury:</span> 6.1% — deliberately modest sizing</div>
           </div>
         </div>
       </div>

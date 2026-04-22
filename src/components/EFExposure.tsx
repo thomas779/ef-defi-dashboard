@@ -11,25 +11,33 @@ const fmt = (n: number): string => {
 }
 const fmtPct = (n: number) => `${n.toFixed(3)}%`
 
-const STATUS_COLORS: Record<ExposureProtocol['status'], string> = {
-  safe:    '#10B981',
-  warning: '#F59E0B',
-  minor:   '#F97316',
-}
-
 interface ChartDatum {
   protocol: string
   loss: number
   color: string
 }
 
+interface TooltipEntry { payload: ChartDatum }
+interface CustomTooltipProps { active?: boolean; payload?: TooltipEntry[] }
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div className="bg-ink border border-rim rounded-sm p-3 text-[11px] shadow-2xl">
+      <p className="font-display font-600 text-bright mb-1.5">{d.protocol}</p>
+      <p className="font-mono text-pale">{fmt(d.loss)} est. loss</p>
+    </div>
+  )
+}
+
 function RiskMeter({ pct, max = 1 }: { pct: number; max?: number }) {
   const fill = Math.min((pct / max) * 100, 100)
-  const color = pct === 0 ? '#10B981' : pct < 0.1 ? '#F59E0B' : '#EF4444'
+  const color = pct === 0 ? '#0DD88A' : pct < 0.1 ? '#D4850A' : '#E03030'
   return (
-    <div className="w-full bg-slate-700 rounded-full h-2">
+    <div className="w-full bg-edge rounded-full h-1">
       <div
-        className="h-2 rounded-full transition-all duration-300"
+        className="h-1 rounded-full transition-all duration-300"
         style={{ width: `${fill}%`, backgroundColor: color }}
       />
     </div>
@@ -39,6 +47,25 @@ function RiskMeter({ pct, max = 1 }: { pct: number; max?: number }) {
 interface ComputedProtocol extends ExposureProtocol {
   estimatedLoss: number
 }
+
+const PROTECTION_ITEMS = [
+  {
+    title: 'No direct rsETH holdings',
+    desc: "EF treasury policy requires battle-tested, immutable protocols — KelpDAO didn't meet the bar.",
+  },
+  {
+    title: "Spark's proactive risk management",
+    desc: 'Spark delisted rsETH as collateral in January 2026, three months before the exploit, shielding EF\'s largest DeFi position ($25M).',
+  },
+  {
+    title: 'Supply-side ETH, not rsETH collateral',
+    desc: "EF's Morpho and Compound positions are ETH/WETH supply. Exposure depends on whether those vaults absorbed rsETH-backed bad debt.",
+  },
+  {
+    title: 'Conservative 6.1% DeFi allocation',
+    desc: 'Even a total DeFi sleeve loss ($50M) would reduce EF treasury by only 6.1% — within stated risk tolerance.',
+  },
+]
 
 export default function EFExposure() {
   const [lossPct, setLossPct] = useState<Record<string, number>>(() =>
@@ -59,60 +86,65 @@ export default function EFExposure() {
   const chartData: ChartDatum[] = computed.map(p => ({
     protocol: p.protocol,
     loss: p.estimatedLoss,
-    color: STATUS_COLORS[p.status],
+    color: p.color,
   }))
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-green-950/30 rounded-lg p-4 border border-green-800/50">
-          <div className="text-green-400 text-xs uppercase tracking-wide font-medium mb-1">Direct rsETH Exposure</div>
-          <div className="text-green-300 text-2xl font-bold">$0</div>
-          <div className="text-green-600 text-xs">EF held no rsETH</div>
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-panel border border-jade/30 rounded-sm p-5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-jade" />
+          <div className="text-[9px] font-mono tracking-[0.22em] text-jade/70 uppercase mb-3 pl-1">Direct rsETH Exposure</div>
+          <div className="text-3xl font-mono font-medium text-jade glow-jade pl-1">$0</div>
+          <div className="font-mono text-[10px] text-dim mt-1 pl-1">EF held no rsETH</div>
         </div>
-        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-slate-400 text-xs uppercase tracking-wide font-medium mb-1">DeFi Deployed (total)</div>
-          <div className="text-white text-2xl font-bold">$50M</div>
-          <div className="text-slate-500 text-xs">6.1% of $820M treasury</div>
+        <div className="bg-panel border border-edge rounded-sm p-5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-steel" />
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-3 pl-1">DeFi Deployed</div>
+          <div className="text-3xl font-mono font-medium text-bright pl-1">$50M</div>
+          <div className="font-mono text-[10px] text-dim mt-1 pl-1">6.1% of $820M treasury</div>
         </div>
-        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-slate-400 text-xs uppercase tracking-wide font-medium mb-1">Estimated Indirect Loss</div>
-          <div className="text-yellow-400 text-2xl font-bold">{fmt(totalLoss)}</div>
-          <div className="text-slate-500 text-xs">based on slider settings</div>
+        <div className="bg-panel border border-edge rounded-sm p-5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-amber" />
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-3 pl-1">Estimated Indirect Loss</div>
+          <div className="text-3xl font-mono font-medium text-amber pl-1">{fmt(totalLoss)}</div>
+          <div className="font-mono text-[10px] text-dim mt-1 pl-1">per slider settings</div>
         </div>
-        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-          <div className="text-slate-400 text-xs uppercase tracking-wide font-medium mb-1">Treasury Impact</div>
-          <div className="text-white text-2xl font-bold">{fmtPct(treasuryImpactPct)}</div>
-          <div className="text-slate-500 text-xs">of $820M total</div>
+        <div className="bg-panel border border-edge rounded-sm p-5 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-gold" />
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-3 pl-1">Treasury Impact</div>
+          <div className="text-3xl font-mono font-medium text-bright pl-1">{fmtPct(treasuryImpactPct)}</div>
+          <div className="font-mono text-[10px] text-dim mt-1 pl-1">of $820M total</div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-          <h2 className="text-white font-semibold mb-1">Indirect Exposure Estimator</h2>
-          <p className="text-slate-500 text-xs mb-5">
-            Adjust the estimated loss percentage for each protocol to model how rsETH bad debt propagates through their vault architecture.
-          </p>
+      <div className="grid md:grid-cols-2 gap-5">
+        <div className="bg-panel border border-edge rounded-sm p-6">
+          <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-1">Indirect Exposure Estimator</div>
+          <div className="font-mono text-[10px] text-dim/60 mb-5">
+            adjust loss % per protocol to model rsETH bad-debt propagation
+          </div>
 
           <div className="space-y-6">
             {efExposure.protocols.map(p => (
               <div key={p.protocol}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[p.status] }} />
-                    <span className="text-slate-200 text-sm font-medium">{p.protocol}</span>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+                    <span className="font-sans text-sm text-pale font-medium">{p.protocol}</span>
                     {p.locked && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/40 text-green-400 border border-green-800/40">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-[#061510] text-jade border border-jade/25 text-[9px] font-mono tracking-[0.1em] uppercase">
+                        <span className="w-1 h-1 rounded-full bg-jade" />
                         Protected
                       </span>
                     )}
                   </div>
                   <div className="text-right">
-                    <span className="text-white text-sm font-semibold">
+                    <span className="font-mono text-sm text-bright">
                       {p.locked ? '$0' : fmt((p.deployed * lossPct[p.protocol]) / 100)}
                     </span>
-                    <span className="text-slate-500 text-xs ml-1">
-                      ({p.locked ? '0' : lossPct[p.protocol].toFixed(1)}%)
+                    <span className="font-mono text-[10px] text-dim ml-1.5">
+                      ({p.locked ? '0.0' : lossPct[p.protocol].toFixed(1)}%)
                     </span>
                   </div>
                 </div>
@@ -127,95 +159,71 @@ export default function EFExposure() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setLossPct(prev => ({ ...prev, [p.protocol]: parseFloat(e.target.value) }))
                   }
-                  className="w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                  style={{ accentColor: STATUS_COLORS[p.status] }}
+                  className="w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  style={{ accentColor: p.color }}
                 />
-                <div className="flex justify-between text-xs text-slate-600 mt-0.5">
+                <div className="flex justify-between font-mono text-[10px] text-dim/60 mt-0.5">
                   <span>0%</span>
                   <span>max {p.maxLossPct}%</span>
                 </div>
-                <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">{p.reason}</p>
+                <p className="font-mono text-[10px] text-dim mt-2 leading-relaxed">{p.reason}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 pt-4 border-t border-slate-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-slate-300 font-semibold">Total estimated loss</span>
-              <span className="text-yellow-400 font-bold text-lg">{fmt(totalLoss)}</span>
+          <div className="mt-6 pt-5 border-t border-edge">
+            <div className="flex justify-between items-baseline mb-1.5">
+              <span className="font-mono text-[10px] text-soft uppercase tracking-[0.15em]">Total estimated loss</span>
+              <span className="font-mono text-lg font-medium text-amber">{fmt(totalLoss)}</span>
             </div>
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-slate-400 text-sm">Treasury impact</span>
-              <span className="text-slate-300 text-sm font-medium">{fmtPct(treasuryImpactPct)}</span>
+            <div className="flex justify-between items-baseline mb-3">
+              <span className="font-mono text-[10px] text-dim">Treasury impact</span>
+              <span className="font-mono text-[11px] text-soft">{fmtPct(treasuryImpactPct)}</span>
             </div>
             <RiskMeter pct={treasuryImpactPct} max={1} />
-            <p className="text-slate-600 text-xs mt-1">Scale: 0% → 1% of treasury</p>
+            <div className="font-mono text-[10px] text-dim/60 mt-1">Scale: 0% → 1% of treasury</div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-white font-semibold mb-4">Estimated Loss by Protocol</h2>
+          <div className="bg-panel border border-edge rounded-sm p-6">
+            <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-4">Estimated Loss by Protocol</div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData} barSize={52}>
-                <XAxis dataKey="protocol" tick={{ fill: '#94a3b8', fontSize: 13 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="protocol" tick={{ fill: '#68688A', fontSize: 12, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
                 <YAxis
                   tickFormatter={(v: number) =>
                     v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`
                   }
-                  tick={{ fill: '#64748b', fontSize: 11 }}
+                  tick={{ fill: '#44445E', fontSize: 11, fontFamily: 'IBM Plex Mono' }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip
-                  formatter={(v: number) => [fmt(v), 'Est. loss']}
-                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#f1f5f9', fontWeight: 600 }}
-                />
-                <Bar dataKey="loss" radius={[4, 4, 0, 0]}>
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(200,148,42,0.04)' }} />
+                <Bar dataKey="loss" radius={[2, 2, 0, 0]}>
                   {chartData.map(d => <Cell key={d.protocol} fill={d.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-white font-semibold mb-4">Why EF Was Relatively Protected</h2>
-            <div className="space-y-3">
-              {[
-                {
-                  title: 'No direct rsETH holdings',
-                  desc: 'EF treasury policy requires "battle-tested, immutable" protocols — KelpDAO did not meet the bar.',
-                },
-                {
-                  title: "Spark's proactive risk management",
-                  desc: "Spark delisted rsETH as collateral in January 2026, three months before the exploit. EF's largest DeFi position ($25M) was shielded.",
-                },
-                {
-                  title: 'Supply-side ETH, not rsETH collateral',
-                  desc: "EF's Morpho and Compound positions are ETH/WETH supply. Exposure depends on whether those vaults absorbed rsETH-backed bad debt.",
-                },
-                {
-                  title: 'Conservative 6.1% DeFi allocation',
-                  desc: 'Even a total DeFi sleeve loss ($50M) would reduce EF treasury by only 6.1% — within its stated risk tolerance.',
-                },
-              ].map(item => (
-                <div key={item.title} className="flex gap-3 p-3 rounded-lg bg-green-900/20">
-                  <span className="font-bold text-green-400 mt-0.5">✓</span>
+          <div className="bg-panel border border-edge rounded-sm p-6">
+            <div className="text-[9px] font-mono tracking-[0.22em] text-dim uppercase mb-4">Why EF Was Relatively Protected</div>
+            <div className="space-y-0">
+              {PROTECTION_ITEMS.map((item, i) => (
+                <div key={item.title} className={`flex gap-3 py-3.5 ${i < PROTECTION_ITEMS.length - 1 ? 'border-b border-edge' : ''}`}>
+                  <div className="flex-shrink-0 w-px bg-jade/40 self-stretch rounded-full" />
                   <div>
-                    <p className="text-slate-200 text-sm font-medium">{item.title}</p>
-                    <p className="text-slate-400 text-xs leading-relaxed">{item.desc}</p>
+                    <p className="text-pale text-[13px] font-medium mb-0.5">{item.title}</p>
+                    <p className="font-mono text-[10px] text-dim leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700 text-xs text-slate-400 leading-relaxed">
-            <span className="text-slate-300 font-medium">Disclaimer: </span>
-            All indirect exposure figures are estimates. Without on-chain forensics of each protocol's specific vault
-            configuration and rsETH utilisation at time of exploit, exact EF losses cannot be determined. Figures will
-            be revised as Morpho and Compound incident reports are published.
+          <div className="bg-panel border border-edge rounded-sm p-4 font-mono text-[10px] text-dim leading-relaxed">
+            <span className="text-soft">Disclaimer:</span> All indirect exposure figures are estimates. Without on-chain forensics of each protocol's vault configuration and rsETH utilisation at time of exploit, exact EF losses cannot be determined. Figures will be revised as Morpho and Compound incident reports are published.
           </div>
         </div>
       </div>

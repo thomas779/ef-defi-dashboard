@@ -8,37 +8,40 @@ import EFExposure from './components/EFExposure'
 
 type TabId = 'overview' | 'defi' | 'hack' | 'scenarios' | 'exposure'
 
-const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'overview',  label: 'EF Portfolio' },
-  { id: 'defi',      label: 'DeFi Positions' },
-  { id: 'hack',      label: 'Hack Summary' },
-  { id: 'scenarios', label: 'Aave Scenarios' },
-  { id: 'exposure',  label: 'EF Exposure' },
+const TABS: Array<{ id: TabId; label: string; shortLabel: string }> = [
+  { id: 'overview',  label: 'EF Portfolio',    shortLabel: '01' },
+  { id: 'defi',      label: 'DeFi Positions',  shortLabel: '02' },
+  { id: 'hack',      label: 'Hack Summary',    shortLabel: '03' },
+  { id: 'scenarios', label: 'Aave Scenarios',  shortLabel: '04' },
+  { id: 'exposure',  label: 'EF Exposure',     shortLabel: '05' },
 ]
 
 export default function App() {
   const [active, setActive] = useState<TabId>('overview')
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen bg-void text-pale">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <nav className="flex gap-1 border-b border-slate-700 mb-6 overflow-x-auto">
+      <div className="max-w-7xl mx-auto px-6">
+        {/* Tab bar */}
+        <nav className="flex gap-0 border-b border-edge mt-0 overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors ${
+              className={`group relative px-5 py-3.5 text-[11px] font-mono tracking-[0.18em] uppercase whitespace-nowrap transition-all duration-200 ${
                 active === t.id
-                  ? 'bg-slate-800 text-white border-b-2 border-blue-500'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  ? 'text-gold border-b border-gold'
+                  : 'text-muted hover:text-soft border-b border-transparent'
               }`}
             >
+              <span className="text-[9px] mr-1.5 opacity-40">{t.shortLabel}</span>
               {t.label}
             </button>
           ))}
         </nav>
-        <main>
+
+        <main className="py-6">
           {active === 'overview'  && <PortfolioOverview />}
           {active === 'defi'      && <DeFiBreakdown />}
           {active === 'hack'      && <HackSummary />}
