@@ -3,12 +3,12 @@ import React from 'react'
 export default function Header() {
   return (
     <header className="bg-ivory border-b border-cream shadow-whisper">
-      <div className="max-w-7xl mx-auto px-6 py-5 flex items-start justify-between gap-8">
+      <div className="max-w-6xl mx-auto px-6 py-5 flex items-start justify-between gap-8">
         <div className="brand-bar pl-4">
-          <div className="text-[10px] font-sans font-500 tracking-[0.18em] text-stone uppercase mb-1.5">
+          <div className="text-[10px] font-sans font-medium tracking-[0.18em] text-stone uppercase mb-1.5">
             Ethereum Foundation · Treasury Intelligence
           </div>
-          <h1 className="font-serif text-2xl font-medium text-near-black leading-tight">
+          <h1 className="font-serif text-[22px] font-medium text-near-black leading-tight">
             DeFi Exposure Dashboard
           </h1>
           <p className="font-sans text-[12px] text-olive mt-1.5">
@@ -24,16 +24,14 @@ export default function Header() {
                 Exploit Active
               </span>
             </div>
-            <div className="font-sans text-[10px] tracking-wide text-stone">
-              Largest DeFi hack of 2026
-            </div>
+            <div className="font-sans text-[11px] text-stone">Largest DeFi hack of 2026</div>
           </div>
 
           <div className="w-px h-9 bg-cream" />
 
           <div className="text-right">
             <div className="font-sans text-[10px] tracking-[0.12em] text-stone uppercase mb-1">EF Direct Exposure</div>
-            <div className="font-serif text-2xl font-medium text-brand">$0</div>
+            <div className="font-mono text-2xl font-medium text-success">$0</div>
           </div>
         </div>
       </div>
