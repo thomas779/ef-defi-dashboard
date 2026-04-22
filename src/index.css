@@ -1,38 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root { color-scheme: light; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background-color: #060609;
-  color: #C4C4DC;
-  /* Subtle amber grid — terminal data-board feel */
-  background-image:
-    linear-gradient(rgba(200, 148, 42, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200, 148, 42, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  background-color: #f5f4ed;
+  color: #141413;
+  font-variant-numeric: tabular-nums;
 }
 
-h1, h2, h3 { font-family: 'Syne', sans-serif; }
+h1, h2, h3 { font-family: 'Newsreader', Georgia, serif; }
 
-.mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+/* Whisper shadow — depth without hard drop shadows */
+.shadow-whisper { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05); }
 
-/* Subtle value glow on key metric numbers */
-.glow-gold  { text-shadow: 0 0 18px rgba(200, 148, 42, 0.5); }
-.glow-jade  { text-shadow: 0 0 18px rgba(13, 216, 138, 0.4); }
-.glow-crim  { text-shadow: 0 0 18px rgba(224, 48, 48, 0.45); }
+/* Brand left bar — kami section-title pattern */
+.brand-bar { border-left: 2.5px solid #1B365D; border-radius: 1px; }
 
-input[type='range'] { accent-color: #C8942A; }
-
-/* Recharts tooltip */
-.recharts-tooltip-wrapper { outline: none; }
-
-/* Thin scrollbar */
+/* Scrollbar — warm tones */
 ::-webkit-scrollbar              { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track        { background: transparent; }
-::-webkit-scrollbar-thumb        { background: #24243C; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover  { background: #C8942A; }
+::-webkit-scrollbar-thumb        { background: #e0ddd2; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover  { background: #1B365D; }
+
+.recharts-tooltip-wrapper { outline: none; }
+
+input[type='range'] { accent-color: #1B365D; }

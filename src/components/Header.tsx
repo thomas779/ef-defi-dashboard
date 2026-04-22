@@ -2,50 +2,38 @@ import React from 'react'
 
 export default function Header() {
   return (
-    <header className="bg-void border-b border-edge">
-      {/* Thin amber accent line at very top */}
-      <div className="h-px bg-gradient-to-r from-gold via-gold/30 to-transparent" />
-
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-start justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-mono tracking-[0.25em] text-gold/70 uppercase">
-              Ethereum Foundation
-            </span>
-            <span className="text-edge">·</span>
-            <span className="text-[9px] font-mono tracking-[0.25em] text-dim uppercase">
-              Treasury Intelligence
-            </span>
+    <header className="bg-ivory border-b border-cream shadow-whisper">
+      <div className="max-w-7xl mx-auto px-6 py-5 flex items-start justify-between gap-8">
+        <div className="brand-bar pl-4">
+          <div className="text-[10px] font-sans font-500 tracking-[0.18em] text-stone uppercase mb-1.5">
+            Ethereum Foundation · Treasury Intelligence
           </div>
-          <h1 className="font-display text-xl font-700 text-bright tracking-tight leading-none">
+          <h1 className="font-serif text-2xl font-medium text-near-black leading-tight">
             DeFi Exposure Dashboard
           </h1>
-          <p className="font-mono text-[11px] text-dim mt-1.5 tracking-wide">
+          <p className="font-sans text-[12px] text-olive mt-1.5">
             KelpDAO / LayerZero rsETH Exploit · 18 April 2026 · $292M stolen
           </p>
         </div>
 
-        <div className="flex items-center gap-6 flex-shrink-0 pt-0.5">
-          {/* Exploit status */}
+        <div className="flex items-center gap-7 flex-shrink-0 pt-1">
           <div className="text-right">
             <div className="flex items-center gap-1.5 justify-end mb-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-crim animate-pulse" />
-              <span className="font-mono text-[9px] tracking-[0.2em] text-crim uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse" />
+              <span className="font-sans text-[10px] tracking-[0.15em] text-error font-medium uppercase">
                 Exploit Active
               </span>
             </div>
-            <div className="font-mono text-[9px] tracking-widest text-dim uppercase">
-              Largest DeFi Hack of 2026
+            <div className="font-sans text-[10px] tracking-wide text-stone">
+              Largest DeFi hack of 2026
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-8 bg-edge" />
+          <div className="w-px h-9 bg-cream" />
 
-          {/* EF status */}
           <div className="text-right">
-            <div className="font-mono text-[9px] tracking-[0.18em] text-dim uppercase mb-1">EF Direct Exposure</div>
-            <div className="font-mono text-lg font-medium text-jade glow-jade">$0</div>
+            <div className="font-sans text-[10px] tracking-[0.12em] text-stone uppercase mb-1">EF Direct Exposure</div>
+            <div className="font-serif text-2xl font-medium text-brand">$0</div>
           </div>
         </div>
       </div>
