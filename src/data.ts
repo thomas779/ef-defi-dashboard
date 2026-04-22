@@ -1,4 +1,4 @@
-export const ETH_PRICE = 2500 as const
+export const ETH_PRICE = 2392 as const  // live price per Arkham
 
 export type ProtocolStatus = 'safe' | 'warning' | 'minor'
 export type ImpactLevel = 'Critical' | 'Medium' | 'Low' | 'None'
@@ -13,13 +13,17 @@ export interface TreasuryAllocation {
 
 export interface DefiPosition {
   protocol: string
-  eth: number
+  asset: string
+  balanceETH: number | null
   usd: number
   pctOfDefi: number
   status: ProtocolStatus
   statusLabel: string
   color: string
   note: string
+  action: 'supply' | 'borrow'
+  explorerHref: string
+  protocolHref: string
 }
 
 export interface HackTimelineEvent {
@@ -58,61 +62,61 @@ export interface AaveScenario {
   rsETHHaircutMainnet?: number
 }
 
-export interface ExposureProtocol {
-  protocol: string
-  deployed: number
-  minLossPct: number
-  maxLossPct: number
-  defaultPct: number
-  locked: boolean
-  status: ProtocolStatus
-  color: string
-  reason: string
-}
+export const EF_ADDRESS = '0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe'
 
+// Source: Arkham Intel, 22 Apr 2026
+// https://intel.arkm.com/explorer/entity/ethereum-foundation
 export const efTreasury = {
-  totalAssets: 820_000_000,
-  ethValue: 735_000_000,
-  nonEthValue: 85_000_000,
-  totalEth: 294_000,
-
-  allocations: [
-    { name: 'Liquid ETH',    value: 510_000_000, eth: 204_000, color: '#1B365D', pct: 62.2 },
-    { name: 'Staked ETH',    value: 175_000_000, eth:  70_000, color: '#2D5A8A', pct: 21.3 },
-    { name: 'DeFi Deployed', value:  50_000_000, eth:  20_000, color: '#8B5E2A', pct:  6.1 },
-    { name: 'Fiat & Other',  value:  85_000_000, eth:    null, color: '#87867f', pct: 10.4 },
-  ] satisfies TreasuryAllocation[],
+  // Arkham shows 14 tracked addresses = $312.7M; full treasury including validators larger
+  totalTrackedAssets: 312_708_826,
+  ethHeld: 102_610,      // liquid ETH across tracked addresses
+  aaveWETH: 21_271,      // aEthWETH supplied to Aave V3
+  aaveUSDS: 2_017_687,   // aEthUSDS supplied to Aave V3 (USD value ~$2M)
+  morphoSteakWETH: 994,  // STEAKETH in Morpho Steakhouse vault
+  compoundBorrow: 92.79, // WETH borrowed from Compound V3 (EF is a borrower)
 
   defiPositions: [
     {
-      protocol:   'Spark',
-      eth:         10_000,
-      usd:         25_000_000,
-      pctOfDefi:   50,
-      status:      'safe' as const,
-      statusLabel: 'Protected',
-      color:       '#2A6B4A',
-      note:        'Proactively delisted rsETH in January 2026 — zero direct exposure to the hack',
-    },
-    {
-      protocol:   'Morpho',
-      eth:          5_800,
-      usd:         14_500_000,
-      pctOfDefi:   29,
+      protocol:    'Aave V3',
+      asset:       'WETH',
+      balanceETH:  21_271,
+      usd:         50_863_145,
+      pctOfDefi:   94,
       status:      'warning' as const,
       statusLabel: 'At Risk',
       color:       '#8B5E2A',
-      note:        'rsETH markets frozen post-hack; EF ETH supply vaults may absorb a pro-rata share of bad debt',
+      note:        'EF supplies 21,271 WETH ($50.86M) to Aave V3 on Ethereum mainnet. This is directly in the protocol with $91.8M of rsETH bad debt on Ethereum Core (Scenario 1). Under Scenario 2, all bad debt is on L2s and this position is unaffected.',
+      action:      'supply' as const,
+      explorerHref: `https://etherscan.io/address/${EF_ADDRESS}`,
+      protocolHref: 'https://app.aave.com',
     },
     {
-      protocol:   'Compound',
-      eth:          4_200,
-      usd:         10_500_000,
-      pctOfDefi:   21,
+      protocol:    'Morpho',
+      asset:       'Steakhouse WETH',
+      balanceETH:  994,
+      usd:         2_396_394,
+      pctOfDefi:   4.5,
       status:      'minor' as const,
       statusLabel: 'Minor Risk',
       color:       '#1B365D',
-      note:        'Affected but far less severely than Aave; isolated market architecture limits contagion',
+      note:        'EF holds 994 STEAKETH (~$2.4M) in the Morpho Steakhouse WETH vault. Morpho\'s rsETH bad debt is under assessment; exposure is limited relative to the Aave position.',
+      action:      'supply' as const,
+      explorerHref: `https://app.morpho.org/address/${EF_ADDRESS}`,
+      protocolHref: 'https://app.morpho.org',
+    },
+    {
+      protocol:    'Compound V3',
+      asset:       'WETH (borrow)',
+      balanceETH:  -93,
+      usd:         -221_871,
+      pctOfDefi:   0,
+      status:      'safe' as const,
+      statusLabel: 'Borrower',
+      color:       '#87867f',
+      note:        'EF is borrowing 92.79 WETH ($221K) from Compound V3 — not supplying. As a borrower, EF is not exposed to bad-debt socialisation in this market.',
+      action:      'borrow' as const,
+      explorerHref: `https://etherscan.io/address/${EF_ADDRESS}`,
+      protocolHref: 'https://app.compound.finance',
     },
   ] satisfies DefiPosition[],
 } as const
@@ -128,33 +132,21 @@ export const hackData = {
   aaveTVLDrop:           6_000_000_000,
   arbFrozenUSD:            71_000_000,
 
-  mechanism: [
-    'Attacker identified that KelpDAO used a 1-of-1 validator configuration on its LayerZero bridge — meaning a single verifier approval is enough to execute any cross-chain message.',
-    "Two RPC nodes used by LayerZero's DVN (Decentralised Verifier Network) were compromised, likely via supply-chain attack attributed to North Korea's TraderTraitor unit.",
-    "Fraudulent cross-chain messages instructed the bridge to mint 116,500 rsETH on Ethereum mainnet with zero backing — roughly 18% of the token's entire circulating supply.",
-    'The unbacked rsETH was immediately deposited as collateral on Aave, Morpho, Compound, and other lending protocols to borrow ~$190M in real ETH/WETH before alarms sounded.',
-  ],
-
   timeline: [
     { time: 'Apr 18 ~14:00 UTC', event: 'Two LayerZero DVN RPC nodes silently compromised' },
     { time: 'Apr 18 ~14:46 UTC', event: '116,500 rsETH minted without backing via forged bridge messages' },
-    { time: 'Apr 18 ~15:32 UTC', event: 'Unbacked rsETH posted as collateral; ~$190M ETH/WETH drained from lending protocols' },
-    { time: 'Apr 18 ~16:00 UTC', event: 'KelpDAO detects anomaly; emergency pause of core contracts triggered' },
+    { time: 'Apr 18 ~15:32 UTC', event: 'Unbacked rsETH posted as collateral; ~$190M ETH/WETH drained from Aave' },
+    { time: 'Apr 18 ~16:00 UTC', event: 'KelpDAO detects anomaly; emergency pause triggered' },
     { time: 'Apr 18 ~16:15 UTC', event: 'Aave, SparkLend, Fluid, and Upshift freeze all rsETH markets' },
     { time: 'Apr 19',            event: 'Whales pull $6B+ from Aave; ETH/USDT/USDC pools hit 100% utilisation' },
-    { time: 'Apr 20',            event: 'Aave incident report published: $124M–$230M bad-debt scenarios' },
+    { time: 'Apr 20',            event: 'Aave incident report: $124M–$230M bad-debt scenarios published' },
     { time: 'Apr 21',            event: 'Arbitrum Security Council freezes 30,766 ETH (~$71M) linked to exploit' },
   ] satisfies HackTimelineEvent[],
-
-  affectedProtocols: [
-    { name: 'Aave',     impact: 'Critical' as const, badDebt: '$124M–$230M',               color: '#b53333' },
-    { name: 'Morpho',   impact: 'Medium'   as const, badDebt: 'Under assessment',           color: '#8B5E2A' },
-    { name: 'Compound', impact: 'Medium'   as const, badDebt: 'Under assessment',           color: '#8B5E2A' },
-    { name: 'Fluid',    impact: 'Medium'   as const, badDebt: 'Under assessment',           color: '#8B5E2A' },
-    { name: 'Euler',    impact: 'Low'      as const, badDebt: 'Minimal',                    color: '#87867f' },
-    { name: 'Spark',    impact: 'None'     as const, badDebt: '$0 — delisted rsETH Jan 2026', color: '#2A6B4A' },
-  ] satisfies AffectedProtocol[],
 }
+
+// Aave V3 Ethereum Core WETH reserve size (pre-hack estimate for haircut calculation)
+// Used to compute EF's pro-rata share of socialised losses
+export const AAVE_ETH_CORE_WETH_RESERVE = 1_200_000_000  // ~$1.2B estimate
 
 export const aaveScenarios: Record<'s1' | 's2', AaveScenario> = {
   s1: {
@@ -203,43 +195,4 @@ export const aaveDAOTreasury = {
   aaveTokens:      54_000_000,
   stablecoins:     52_000_000,
   umbrellaWETH:    54_060_000,
-}
-
-export const efExposure = {
-  directRsETH: 0,
-  protocols: [
-    {
-      protocol:    'Spark',
-      deployed:    25_000_000,
-      minLossPct:  0,
-      maxLossPct:  0,
-      defaultPct:  0,
-      locked:      true,
-      status:      'safe' as const,
-      color:       '#2A6B4A',
-      reason:      'Spark delisted rsETH in January 2026, three months before the hack. Zero exposure.',
-    },
-    {
-      protocol:    'Morpho',
-      deployed:    14_500_000,
-      minLossPct:  0,
-      maxLossPct:  10,
-      defaultPct:  3.5,
-      locked:      false,
-      status:      'warning' as const,
-      color:       '#8B5E2A',
-      reason:      "EF's ETH supply in Morpho WETH vaults may absorb a pro-rata share of rsETH-collateralised bad debt. Isolated markets cap the damage.",
-    },
-    {
-      protocol:    'Compound',
-      deployed:    10_500_000,
-      minLossPct:  0,
-      maxLossPct:  2,
-      defaultPct:  0.5,
-      locked:      false,
-      status:      'minor' as const,
-      color:       '#1B365D',
-      reason:      'Compound was affected but to a much lesser degree than Aave. Risk parameters likely contained most of the rsETH bad debt.',
-    },
-  ] satisfies ExposureProtocol[],
 }

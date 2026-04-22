@@ -1,27 +1,30 @@
 import React, { useState } from 'react'
-import { efExposure, efTreasury } from '../data'
+import { aaveScenarios, AAVE_ETH_CORE_WETH_RESERVE, efTreasury } from '../data'
 
-const fmt = (n: number): string => {
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`
-  return `$${n.toFixed(0)}`
-}
+const fmt = (n: number) => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${(n / 1e3).toFixed(0)}K`
 const fmtBig = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : `$${(n / 1e6).toFixed(0)}M`
 
+// EF's Aave position: 21,271 WETH = $50.86M (source: Arkham Intel 22 Apr 2026)
+const EF_AAVE_WETH_USD  = efTreasury.aaveWETH * 2392   // ~$50.86M
+const EF_MORPHO_USD     = efTreasury.morphoSteakWETH * 2410  // ~$2.4M (STEAKETH price)
+
 export default function AaveScenarios() {
-  const [morphoPct, setMorphoPct] = useState(3.5)
-  const [compoundPct, setCompoundPct] = useState(0.5)
+  // Adjustable: how much of Ethereum Core residual bad debt gets socialised across WETH suppliers
+  const [wethReserveB, setWethReserveB] = useState(1.2)  // total Aave ETH Core WETH reserve (billions)
 
-  const morphoDeployed  = 14_500_000
-  const compoundDeployed = 10_500_000
+  const s1 = aaveScenarios.s1
+  const s2 = aaveScenarios.s2
 
-  // Scenario 1: EF absorbs pro-rata bad debt through Morpho WETH vaults
-  const s1MorphoLoss   = morphoDeployed * morphoPct / 100
-  const s1CompoundLoss = compoundDeployed * compoundPct / 100
-  const s1Total        = s1MorphoLoss + s1CompoundLoss
-  const s1TreasuryPct  = (s1Total / efTreasury.totalAssets) * 100
+  // S1: Ethereum Core has $91.8M bad debt; Umbrella covers $54M → $37.8M residual socialised across WETH suppliers
+  const s1EthCoreResidual  = 91_800_000 - 54_060_000   // = $37.74M
+  const wethReserve        = wethReserveB * 1e9
+  const s1HaircutPct       = (s1EthCoreResidual / wethReserve) * 100
+  const s1AaveLoss         = EF_AAVE_WETH_USD * (s1HaircutPct / 100)
+  const s1MorphoLoss       = EF_MORPHO_USD * 0.02   // rough 2% on the tiny Morpho position
+  const s1Total            = s1AaveLoss + s1MorphoLoss
+  const s1TreasuryPct      = (s1Total / 312_708_826) * 100
 
-  // Scenario 2: losses confined to L2 rsETH holders — EF mainnet WETH unaffected
+  // S2: All bad debt is on L2s (Arbitrum, Mantle, Base, Ink). Ethereum mainnet WETH reserve = 0 bad debt.
   const s2Total       = 0
   const s2TreasuryPct = 0
 
@@ -30,197 +33,212 @@ export default function AaveScenarios() {
       {/* Framing */}
       <div className="bg-ivory border border-cream rounded-lg p-6 shadow-whisper">
         <div className="brand-bar pl-3 mb-3">
-          <h2 className="font-serif text-lg font-medium text-near-black">How Much Does EF Actually Lose?</h2>
+          <h2 className="font-serif text-lg font-medium text-near-black">EF's Aave Loss: Two Paths</h2>
         </div>
         <p className="font-sans text-[13px] text-olive leading-relaxed pl-3 max-w-3xl">
-          Aave DAO has published two resolution scenarios for its $124M–$230M rsETH bad debt.
-          EF holds <span className="text-charcoal font-medium">$14.5M in Morpho WETH vaults</span> and{' '}
-          <span className="text-charcoal font-medium">$10.5M in Compound</span> — neither protocol holds rsETH directly,
-          but WETH suppliers may absorb bad debt pro-rata if losses are socialized. The outcome is binary:
-          EF loses a few hundred thousand dollars, or nothing at all.
+          EF supplies <span className="font-medium text-charcoal">21,271 WETH ($50.86M) into Aave V3 on Ethereum mainnet</span>{' '}
+          — confirmed on-chain via Arkham. Aave has published two bad-debt scenarios. The critical question for EF:{' '}
+          does any bad debt land on the Ethereum Core WETH reserve (where EF supplies), or is it all
+          confined to L2 chains?
         </p>
       </div>
 
-      {/* Two scenarios side by side */}
+      {/* Scenario comparison */}
       <div className="grid md:grid-cols-2 gap-5">
-        {/* Scenario 1 */}
+        {/* S1 */}
         <div className="bg-ivory border-2 border-warn/40 rounded-lg shadow-whisper overflow-hidden">
           <div className="bg-warn-faint border-b border-warn/20 px-6 py-4">
             <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-warn/70 uppercase mb-1">Scenario 1</div>
             <div className="font-serif text-lg font-medium text-near-black">Uniform Socialization</div>
             <div className="font-sans text-[12px] text-warn mt-1">
-              15.12% haircut on ALL rsETH holders · Umbrella activates ($54M covered) · Net residual: $69.6M
+              EF takes a haircut as an Aave WETH supplier
             </div>
           </div>
 
-          <div className="px-6 py-5">
-            <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-stone uppercase mb-4">EF's Indirect Loss</div>
+          <div className="px-6 py-5 space-y-5">
+            <div className="font-sans text-[12px] text-olive leading-relaxed">
+              15.12% rsETH haircut applied globally. Ethereum Core bears $91.8M of the bad debt.
+              Umbrella Safety Module covers $54M — leaving <span className="font-medium text-charcoal">$37.8M to be
+              socialised across Ethereum Core WETH suppliers.</span> EF's $50.86M is a fraction of that reserve.
+            </div>
 
-            <div className="space-y-4 mb-5">
-              {/* Morpho slider */}
-              <div>
-                <div className="flex justify-between items-baseline mb-1.5">
-                  <span className="font-sans text-[12px] text-charcoal">Morpho WETH vault absorption</span>
-                  <span className="font-mono text-sm font-medium text-warn">{fmt(s1MorphoLoss)}</span>
-                </div>
-                <input
-                  type="range" min={0} max={10} step={0.1} value={morphoPct}
-                  onChange={e => setMorphoPct(parseFloat(e.target.value))}
-                  className="w-full cursor-pointer"
-                  style={{ accentColor: '#8B5E2A' }}
-                />
-                <div className="flex justify-between font-sans text-[10px] text-silver mt-0.5">
-                  <span>0% (best case)</span>
-                  <span className="font-medium text-charcoal">{morphoPct.toFixed(1)}% of $14.5M</span>
-                  <span>10% (worst case)</span>
-                </div>
+            {/* WETH reserve slider */}
+            <div>
+              <div className="flex justify-between items-baseline mb-1.5">
+                <span className="font-sans text-[11px] text-charcoal">Aave ETH Core WETH reserve (estimate)</span>
+                <span className="font-mono text-sm font-medium text-charcoal">${wethReserveB.toFixed(1)}B</span>
               </div>
-
-              {/* Compound slider */}
-              <div>
-                <div className="flex justify-between items-baseline mb-1.5">
-                  <span className="font-sans text-[12px] text-charcoal">Compound market absorption</span>
-                  <span className="font-mono text-sm font-medium text-warn">{fmt(s1CompoundLoss)}</span>
-                </div>
-                <input
-                  type="range" min={0} max={2} step={0.1} value={compoundPct}
-                  onChange={e => setCompoundPct(parseFloat(e.target.value))}
-                  className="w-full cursor-pointer"
-                  style={{ accentColor: '#8B5E2A' }}
-                />
-                <div className="flex justify-between font-sans text-[10px] text-silver mt-0.5">
-                  <span>0%</span>
-                  <span className="font-medium text-charcoal">{compoundPct.toFixed(1)}% of $10.5M</span>
-                  <span>2%</span>
-                </div>
-              </div>
-
-              {/* Spark */}
-              <div className="flex justify-between items-baseline py-2 border-t border-cream">
-                <span className="font-sans text-[12px] text-stone">Spark (delisted rsETH Jan 2026)</span>
-                <span className="font-mono text-sm font-medium text-success">$0</span>
+              <input
+                type="range" min={0.5} max={3} step={0.1} value={wethReserveB}
+                onChange={e => setWethReserveB(parseFloat(e.target.value))}
+                className="w-full cursor-pointer"
+                style={{ accentColor: '#8B5E2A' }}
+              />
+              <div className="flex justify-between font-sans text-[10px] text-silver mt-0.5">
+                <span>$0.5B</span>
+                <span className="text-stone">Pre-hack reserve size (uncertain — adjust to model)</span>
+                <span>$3B</span>
               </div>
             </div>
 
-            {/* Total */}
-            <div className="bg-warn-faint border border-warn/25 rounded-lg p-4">
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em]">EF Total Loss</span>
-                <span className="font-mono text-2xl font-medium text-warn">{fmt(s1Total)}</span>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <span className="font-sans text-[11px] text-stone">Treasury impact</span>
-                <span className="font-mono text-[12px] text-charcoal">{s1TreasuryPct.toFixed(4)}%</span>
-              </div>
-              <div className="w-full bg-sand rounded-full h-1 mt-2">
-                <div
-                  className="h-1 rounded-full transition-all duration-200 bg-warn"
-                  style={{ width: `${Math.min(s1TreasuryPct * 100, 100)}%` }}
-                />
-              </div>
-              <div className="font-sans text-[10px] text-silver mt-1">Scale: 0% → 1% of treasury</div>
-            </div>
-
-            <p className="font-sans text-[11px] text-olive leading-relaxed mt-4">
-              A global haircut propagates through Morpho's WETH vault architecture: rsETH borrowers default,
-              vault reserves absorb bad debt, and suppliers (including EF) see a pro-rata reduction in withdrawable ETH.
-              Compound's isolated market design limits contagion to a smaller fraction.
-            </p>
-          </div>
-        </div>
-
-        {/* Scenario 2 */}
-        <div className="bg-ivory border-2 border-success/40 rounded-lg shadow-whisper overflow-hidden">
-          <div className="bg-success-faint border-b border-success/20 px-6 py-4">
-            <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-success/70 uppercase mb-1">Scenario 2</div>
-            <div className="font-serif text-lg font-medium text-near-black">L2-Isolated Losses</div>
-            <div className="font-sans text-[12px] text-success mt-1">
-              73.54% haircut on L2 rsETH only · Mainnet rsETH: 0% haircut · Umbrella: does not activate
-            </div>
-          </div>
-
-          <div className="px-6 py-5">
-            <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-stone uppercase mb-4">EF's Indirect Loss</div>
-
-            <div className="space-y-0 mb-5">
+            {/* Loss breakdown */}
+            <div className="space-y-0 border border-cream rounded-lg overflow-hidden">
               {[
-                { protocol: 'Morpho WETH vault', reason: 'EF supplies mainnet WETH · L2 haircut does not touch mainnet reserves', loss: 0 },
-                { protocol: 'Compound', reason: 'No L2 exposure in EF\'s Compound position', loss: 0 },
-                { protocol: 'Spark', reason: 'Delisted rsETH Jan 2026', loss: 0 },
-              ].map((item, i) => (
-                <div key={item.protocol} className={`py-3 ${i < 2 ? 'border-b border-cream' : ''}`}>
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <span className="font-sans text-[12px] font-medium text-charcoal">{item.protocol}</span>
-                    <span className="font-mono text-sm font-medium text-success">$0</span>
+                {
+                  label:    'EF Aave WETH supply',
+                  position: `$50.86M × ${s1HaircutPct.toFixed(2)}% haircut`,
+                  loss:     s1AaveLoss,
+                  main:     true,
+                },
+                {
+                  label:    'EF Morpho Steakhouse WETH',
+                  position: '$2.4M · rough 2% estimate',
+                  loss:     s1MorphoLoss,
+                  main:     false,
+                },
+                {
+                  label:    'Compound V3',
+                  position: 'EF is a borrower, not a supplier — no socialisation exposure',
+                  loss:     0,
+                  main:     false,
+                },
+              ].map((r, i) => (
+                <div key={r.label} className={`flex justify-between items-start gap-4 px-4 py-3 ${i < 2 ? 'border-b border-cream' : ''}`}>
+                  <div>
+                    <div className="font-sans text-[12px] font-medium text-charcoal">{r.label}</div>
+                    <div className="font-sans text-[11px] text-stone">{r.position}</div>
                   </div>
-                  <p className="font-sans text-[11px] text-olive">{item.reason}</p>
+                  <div className={`font-mono text-sm font-medium flex-shrink-0 ${r.loss > 0 ? 'text-warn' : 'text-success'}`}>
+                    {r.loss > 0 ? fmt(r.loss) : '$0'}
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Total */}
-            <div className="bg-success-faint border border-success/25 rounded-lg p-4 mb-4">
+            <div className="bg-warn-faint border border-warn/25 rounded-lg p-4">
               <div className="flex justify-between items-baseline mb-1">
-                <span className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em]">EF Total Loss</span>
-                <span className="font-mono text-2xl font-medium text-success">$0</span>
+                <span className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em]">EF estimated loss</span>
+                <span className="font-mono text-2xl font-medium text-warn">{fmt(s1Total)}</span>
               </div>
               <div className="flex justify-between items-baseline">
-                <span className="font-sans text-[11px] text-stone">Treasury impact</span>
-                <span className="font-mono text-[12px] text-success">0.000%</span>
+                <span className="font-sans text-[11px] text-stone">
+                  Aave haircut on mainnet: {s1HaircutPct.toFixed(2)}% of supplied WETH
+                </span>
+                <span className="font-mono text-[12px] text-charcoal">{s1TreasuryPct.toFixed(3)}% of tracked treasury</span>
               </div>
-              <div className="w-full bg-sand rounded-full h-1 mt-2">
-                <div className="h-1 rounded-full bg-success" style={{ width: '0%' }} />
-              </div>
-              <div className="font-sans text-[10px] text-silver mt-1">Scale: 0% → 1% of treasury</div>
+            </div>
+          </div>
+        </div>
+
+        {/* S2 */}
+        <div className="bg-ivory border-2 border-success/40 rounded-lg shadow-whisper overflow-hidden">
+          <div className="bg-success-faint border-b border-success/20 px-6 py-4">
+            <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-success/70 uppercase mb-1">Scenario 2</div>
+            <div className="font-serif text-lg font-medium text-near-black">L2-Isolated Losses</div>
+            <div className="font-sans text-[12px] text-success mt-1">
+              EF's mainnet Aave position is fully insulated
+            </div>
+          </div>
+
+          <div className="px-6 py-5 space-y-5">
+            <div className="font-sans text-[12px] text-olive leading-relaxed">
+              73.54% haircut applies only to L2 rsETH holders. The entire $230.1M bad debt sits on Arbitrum,
+              Mantle, Base, and Ink — <span className="font-medium text-charcoal">Ethereum Core WETH reserve has
+              $0 bad debt.</span> EF's Aave supply position on mainnet is untouched.
             </div>
 
-            <p className="font-sans text-[11px] text-olive leading-relaxed">
-              L2-isolated losses hit only rsETH borrowers on Arbitrum, Mantle, Base, and Ink. EF's positions are
-              mainnet WETH supply — structurally insulated from L2 haircuts. Umbrella's non-activation is moot for EF:
-              without any bad debt flowing to mainnet reserves, there is nothing to absorb.
-            </p>
+            {/* Loss breakdown */}
+            <div className="space-y-0 border border-cream rounded-lg overflow-hidden">
+              {[
+                {
+                  label:  'EF Aave WETH supply',
+                  reason: 'Ethereum mainnet Aave has no bad debt in S2 — all on L2s',
+                  loss:   0,
+                },
+                {
+                  label:  'EF Morpho Steakhouse WETH',
+                  reason: 'Morpho\'s mainnet rsETH bad debt unresolved under S2 — exact impact unknown',
+                  loss:   null,
+                },
+                {
+                  label:  'Compound V3',
+                  reason: 'EF is a borrower — no supplier socialisation risk',
+                  loss:   0,
+                },
+              ].map((r, i) => (
+                <div key={r.label} className={`flex justify-between items-start gap-4 px-4 py-3 ${i < 2 ? 'border-b border-cream' : ''}`}>
+                  <div>
+                    <div className="font-sans text-[12px] font-medium text-charcoal">{r.label}</div>
+                    <div className="font-sans text-[11px] text-stone">{r.reason}</div>
+                  </div>
+                  <div className={`font-mono text-sm font-medium flex-shrink-0 ${r.loss === null ? 'text-warn' : 'text-success'}`}>
+                    {r.loss === null ? 'TBD' : '$0'}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total */}
+            <div className="bg-success-faint border border-success/25 rounded-lg p-4">
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em]">EF estimated loss (Aave)</span>
+                <span className="font-mono text-2xl font-medium text-success">$0</span>
+              </div>
+              <div className="font-sans text-[11px] text-stone">
+                Morpho impact TBD — $2.4M position, pending Morpho DAO's own resolution
+              </div>
+            </div>
+
+            <div className="bg-parchment border border-cream rounded-lg p-3 font-sans text-[11px] text-olive leading-relaxed">
+              <span className="font-medium text-charcoal">Caveat:</span> S2 leaves Ethereum Core mainnet bad debt
+              ($91.8M in Aave) unresolved via rsETH haircuts. Aave DAO would need a separate mechanism — potentially
+              drawing on the $181M DAO treasury — to cover the residual. This scenario's resolution path is less clear.
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Aave-level context */}
+      {/* Aave chain breakdown context */}
       <div className="bg-ivory border border-cream rounded-lg p-5 shadow-whisper">
         <div className="brand-bar pl-3 mb-4">
-          <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-stone uppercase">Aave-Level Context</div>
+          <div className="text-[10px] font-sans font-medium tracking-[0.14em] text-stone uppercase">Where the Bad Debt Sits</div>
         </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            {
-              label: 'Scenario 1 bad debt',
-              value: '$123.7M',
-              sub: 'After $54M Umbrella → $69.6M net',
-              color: 'text-warn',
-            },
-            {
-              label: 'Scenario 2 bad debt',
-              value: '$230.1M',
-              sub: 'Umbrella inactive · full residual',
-              color: 'text-error',
-            },
-            {
-              label: 'Aave DAO treasury',
-              value: '$181M',
-              sub: '$54M Umbrella WETH module on-chain',
-              color: 'text-brand',
-            },
-          ].map(r => (
-            <div key={r.label} className="p-4 bg-parchment border border-cream rounded-lg">
-              <div className="text-[10px] font-sans font-medium tracking-[0.12em] text-stone uppercase mb-2">{r.label}</div>
-              <div className={`font-mono text-xl font-medium ${r.color}`}>{r.value}</div>
-              <div className="font-sans text-[11px] text-olive mt-1">{r.sub}</div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <div className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em] mb-3">Scenario 1 — $123.7M total</div>
+            <div className="space-y-0">
+              {aaveScenarios.s1.chains.map((c, i) => (
+                <div key={c.chain} className={`flex justify-between items-center py-2 ${i < aaveScenarios.s1.chains.length - 1 ? 'border-b border-cream' : ''}`}>
+                  <span className="flex items-center gap-2 font-sans text-[12px] text-charcoal">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                    {c.chain}
+                    {c.chain === 'Ethereum Core' && <span className="text-[10px] text-warn font-medium">(EF supplies here)</span>}
+                  </span>
+                  <span className="font-mono text-[12px] text-near-black">{fmtBig(c.badDebt)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+          <div>
+            <div className="font-sans text-[11px] font-medium text-stone uppercase tracking-[0.1em] mb-3">Scenario 2 — $230.1M total (L2s only)</div>
+            <div className="space-y-0">
+              {aaveScenarios.s2.chains.map((c, i) => (
+                <div key={c.chain} className={`flex justify-between items-center py-2 ${i < aaveScenarios.s2.chains.length - 1 ? 'border-b border-cream' : ''}`}>
+                  <span className="flex items-center gap-2 font-sans text-[12px] text-charcoal">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                    {c.chain}
+                  </span>
+                  <span className="font-mono text-[12px] text-near-black">{fmtBig(c.badDebt)}</span>
+                </div>
+              ))}
+              <div className="pt-2 font-sans text-[11px] text-success flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                Ethereum mainnet: $0 bad debt — EF's position unaffected
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="font-sans text-[12px] text-silver mt-4 leading-relaxed">
-          The resolution depends on KelpDAO's loss-distribution mechanism and Aave DAO governance vote.
-          Scenario 1 requires global rsETH holder socialization; Scenario 2 requires on-chain forensics to
-          isolate exactly which rsETH was minted on which chain.
-        </p>
       </div>
     </div>
   )
